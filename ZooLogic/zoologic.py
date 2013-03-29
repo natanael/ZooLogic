@@ -10,7 +10,6 @@ class Piece:
 		return "<Piece: %s>" % self.name
 	def addAvoid(self, piece):
 		if not self.avoid.count(piece):
-			#print "%s must be away from %s" % (self,piece)
 			self.avoid.append(piece)
 			piece.addAvoid(self)
 	def __repr__(self):
@@ -46,9 +45,6 @@ class Row:
 			for choices in hand:
 				if not blacklist.count(choices[0].name):
 					whitelist.append(choices)
-			#whitelist = [kind for kind in hand if (not blacklist.count(kind[0]))]
-			#print "Row %d accepts %r" % (self.key, whitelist)
-			#print "'Cause it's adj avoid: %r" % [row.getAvoidList() for row in self.adj]
 			return whitelist
 	def __str__(self):
 		if not self.value:
@@ -113,37 +109,24 @@ def takeFromHand(hand,piece):
 
 steps = []
 final = []
-def solve(table, hand, level=0):
-	global steps
-	#print level,
+def solve(table, hand, level=0, row_pos=False):
 	steps.append([table,hand])
-	#printTable(table,hand)
 	freerows = getFreeRows(table)
-	#If there are no empty rows, you won!
 	if len(freerows) == 0:
-		#print "Success!"
 		return (table,hand)
-	row_pos = [[row,row.getPossible(hand)] for row in freerows]
-	#If there's any row for which there's no possible piece, you failed
+	if not row_pos:
+		row_pos = [[row,row.getPossible(hand)] for row in freerows]
 	if len([True for row, pos in row_pos if not len(pos)]):
-		#print "Killed a row"
 		return False
-	#Start by the rows with least possibilities
 	row_pos.sort(key=(lambda x:len(x[1])))
-	#for each row get's its possibilities
-	for row,pos in row_pos:
-		#print "Trying each of %d choices row %r" % (len(pos),row)
-		#print "Free rows %d" % (len(getFreeRows(table)))
-		#for each choice in its possilities
-		for choice in pos:
-			table_ = deepcopy(table)
-			hand_ = deepcopy(hand)
-			table_[row.key].value = takeFromHand(hand_, choice[0])
-			#print "Hand: %r" % [choice[0].name for choice in hand_ if len(choice)]
-			#print "Trying %r from %r on %r\n" % (table_[row.key].value,[choice[0].name for choice in pos],table_[row.key])
-			#try to solve the puzzle returning the current table and the current hand
-			solution = solve(table_,hand_,level+1)
-			if solution:
-				return solution
+	row_pos.reverse()
+	row,pos = row_pos.pop()
+	for choice in pos:
+		table_ = deepcopy(table)
+		hand_ = deepcopy(hand)
+		table_[row.key].value = takeFromHand(hand_, choice[0])
+		solution = solve(table_,hand_,level+1,row_pos=deepcopy(row_pos))
+		if solution:
+			return solution
 	final.append([table,hand])
 	return False
