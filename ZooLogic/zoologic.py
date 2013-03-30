@@ -6,14 +6,16 @@ class Piece:
 		self.avoid = avoid[:]
 	def __str__(self):
 		if self.nature == 'Extra':
-			return "<Extra: %s>" % str(self.name)	
-		return "<Piece: %s>" % self.name
+			return "%s".lower() % str(self.name)	
+		return "%s".lower() % self.name
 	def addAvoid(self, piece):
 		if not self.avoid.count(piece):
 			self.avoid.append(piece)
 			piece.addAvoid(self)
 	def __repr__(self):
-		return str(self)
+		if self.nature == 'Extra':
+			return "<Extra: %s>" % str(self.name)	
+		return "<Piece: %s>" % self.name
 
 class Row:
 	def __init__(self, key, value = False, adj = [], locked = False):
@@ -45,18 +47,22 @@ class Row:
 			for choices in hand:
 				if not blacklist.count(choices[0].name):
 					whitelist.append(choices)
+			#print "%d\nblacklist: %r\nwhitelist: %r" % (self.key, blacklist, whitelist)
 			return whitelist
 	def __str__(self):
 		if not self.value:
-			return "<Row %d: Empty>" % self.key
+			return "{number: %d, label: empty}" % self.key
 		else:
-			return "<Row %d: %s>" % (self.key,str(self.value))
+			return "{number: %d, label: %s}".lower() % (self.key,str(self.value))
 	def addAdj(self, adj):
 		if not self.adj.count(adj):
 			self.adj.append(adj)
 			adj.adj.append(self)
 	def __repr__(self):
-		return str(self)
+		if not self.value:
+			return "<Row %d: Empty>" % self.key
+		else:
+			return "<Row %d: %s>" % (self.key,str(self.value))
 
 pieces = {}
 #Animals
@@ -92,13 +98,36 @@ pieces['angry_dog'].addAvoid(pieces['angry_dog'])
 def getFreeRows(table):
 	return [row for row in table if row.isFree()]
 
-def printTable(table,hand):
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+
+def printJsonTable(table, hand, pos=-1):
+	response = {}
+	for row in table:
+		response[row.key] = row.toDictionary()
+		if not row.isFree():
+			if (table.index(row) == pos):
+				response[row.key]['actual'] = True
+		else:
+			response[row.key] = row.toDictionary()
+			response[row.key]['possibilities'] = [choice[0].name for choice in row.getPossible(hand)]
+	print json.dumps(response)
+
+def printTable(table, hand, pos=-1):
 	c=0
 	for row in table:
 		if not row.isFree():
-			print "%d: %s" % (c,row)
+			if table.index(row) == pos:
+				print (bcolors.OKBLUE+"%d: %s"+bcolors.ENDC) % (c,row)
+			else:	
+				print "%d: %s" % (c,row)
 		else:
-			print "%d: %s\t%r" % (c,row,[choice[0].name for choice in row.getPossible(hand)])
+			print (bcolors.OKGREEN+"%d: %s"+bcolors.ENDC+"\t%r") % (c,row,[choice[0].name for choice in row.getPossible(hand)])
 		c+=1
 
 def takeFromHand(hand,piece):
@@ -111,11 +140,11 @@ steps = []
 final = []
 def solve(table, hand, level=0, row_pos=False):
 	steps.append([table,hand])
+	print ""
 	freerows = getFreeRows(table)
 	if len(freerows) == 0:
 		return (table,hand)
-	if not row_pos:
-		row_pos = [[row,row.getPossible(hand)] for row in freerows]
+	row_pos = [[row,row.getPossible(hand)] for row in freerows]
 	if len([True for row, pos in row_pos if not len(pos)]):
 		return False
 	row_pos.sort(key=(lambda x:len(x[1])))
@@ -124,9 +153,17 @@ def solve(table, hand, level=0, row_pos=False):
 	for choice in pos:
 		table_ = deepcopy(table)
 		hand_ = deepcopy(hand)
-		table_[row.key].value = takeFromHand(hand_, choice[0])
-		solution = solve(table_,hand_,level+1,row_pos=deepcopy(row_pos))
-		if solution:
-			return solution
+		piece = takeFromHand(hand_, choice[0])
+		if piece:
+			table_[row.key].value = piece
+			print level, row.key, piece
+			printTable(table_,hand_,row.key)
+			solution = solve(table_,hand_,level+1,row_pos=deepcopy(row_pos))
+			if solution:
+				return solution
+			else:
+				print "failed"
+				printTable(table,hand,row.key)
+				print ""
 	final.append([table,hand])
 	return False

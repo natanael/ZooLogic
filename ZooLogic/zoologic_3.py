@@ -1,4 +1,5 @@
 from zoologic import *
+import json
 
 table = []
 for x in range(8):
@@ -19,8 +20,8 @@ table[2].value = pieces['bull']
 table[6].value = pieces['fish']
 table[7].value = pieces['bull']
 	
-table, hand = solve(table, hand)
 printTable(table,hand)
-print hand
+
+table, hand = solve(table, hand)
 print "N# of Steps: %d" % len(steps)
 print "N# of Dead Ends: %d" % len(final)

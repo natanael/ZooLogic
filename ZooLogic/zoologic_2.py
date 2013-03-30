@@ -18,8 +18,8 @@ table[6].value = pieces['mouse']
 table[2].value = pieces['mouse']
 table[9].value = pieces['ants']
 
-table, hand = solve(table, hand)
 printTable(table,hand)
-print hand
+
+table, hand = solve(table, hand)
 print "N# of Steps: %d" % len(steps)
 print "N# of Dead Ends: %d" % len(final)
